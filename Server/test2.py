@@ -2,10 +2,9 @@ import numpy as np
 import random
 random.seed(200)
 
-from random import randint, random
 from math import tanh
-from Simulator.PARAMETERS import WORLD_SIZE
-
+# from Simulator.PARAMETERS import WORLD_SIZE
+WORLD_SIZE = 128
 
 class Node:
     def __init__(self, x, y, isOcc=False):
@@ -113,6 +112,7 @@ class Brain:
 
         self.attach_functions()
         if self.genome is not None:
+            self.brain_graph = [[], [], []]
             for gene in self.genome:
                 source_type, source_id, sink_type, sink_id, weight = extractData(gene)
                 if source_type == 0:
@@ -381,10 +381,10 @@ class Brain:
         arr = [self.density_north(), self.density_east(), self.density_south(), self.density_west()]
 
     def rand(self):
-        return random()
+        return random.random()
 
     def randColor(self):
-        return f"#{hex(randint(0,255))[2:]}{hex(randint(0,255))[2:]}{hex(randint(0,255))[2:]}"
+        return f"#{hex(random.randint(0,255))[2:]}{hex(random.randint(0,255))[2:]}{hex(random.randint(0,255))[2:]}"
 
     def me(self):
         return self.move(0, 1)
@@ -402,9 +402,9 @@ class Brain:
         self.move(*self.prev)
 
     def mrd(self):
-        arr = [randint(-1,1),0]
+        arr = [random.randint(-1,1),0]
         if arr[0] == 0:
-            arr[1] = randint(-1,1)
+            arr[1] = random.randint(-1,1)
         return self.move(arr[0],arr[1])
 
     def setRadius(self):
@@ -431,7 +431,7 @@ class Creature(Brain):
 
 def generate_population(sz):
     choices = np.random.choice(ALL_CELLS, size=sz, replace=False)
-    arr = [Creature(ele['x'], ele['y'], [randint(1, int("ffffffff",16)) for _ in range(5)]) for ele in choices]
+    arr = [Creature(ele['x'], ele['y'], [random.randint(1, int("ffffffff",16)) for _ in range(5)]) for ele in choices]
     for ele in arr:
         grid.GRID_CELLS[ele.x][ele.y].isOccupied = True
     return arr
@@ -443,7 +443,7 @@ def generate_population(sz):
 
 
 from flask import Flask, jsonify, make_response
-from flask_cors import CORS, cross_origin
+from flask_cors import CORS
 import json
 import gzip
 
@@ -457,22 +457,51 @@ def hello_world():
     return "<p>Hello, World!</p>"
 
 
-def stuff():
-    creatures = generate_population(100)
+
+def mutation(probability):
+    return random.random() <= probability
+
+def run_natural_selection(gens):
+    global creatures, ALL_CELLS
     arr = []
     for i in range(300):
         temp = []
         for elem in creatures:
-            temp.append(elem.dumps())
-
+            temp.append({'x': elem.x, 'y': elem.y, 'g': elem.genomeCol})
         for elem in creatures:
             elem.think()
         arr.append(temp)
-    content = gzip.compress(json.dumps(arr).encode('utf8'), 5)
-    response = make_response(content)
-    response.headers['Content-length'] = len(content)
-    response.headers['Content-Encoding'] = 'gzip'
-    return response
+
+
+    choices = np.random.choice(ALL_CELLS, size=len(creatures), replace=False)
+    for i in range(gens):
+        brr = []
+        for ele in creatures:
+            ele.think()
+        for ele in creatures:
+            if ele.y >= 64:
+                for _ in range(random.randint(1,2)):
+                    gene = ele.genome[:]
+                    if mutation(1 / 100):
+                        ch = random.choice(gene)
+                        ch ^= ( (1<<(random.randint(0,32))) -1)
+                    brr.append(Creature(ele.x, ele.y, gene))
+        while len(brr) < len(creatures):
+            brr.append(Creature(1,1,[random.randint(1, int("ffffffff",16)) for _ in range(4)]))
+        random.shuffle(brr)
+        if len(brr) > len(creatures):
+            brr = brr[:len(creatures)]
+        for i,ele in enumerate(brr):
+            ele.x = choices[i]['x']
+            ele.y = choices[i]['y']
+        creatures = brr
+
+    return arr
+
+creatures = generate_population(1000)
+
+
+
 
 @app.route("/test", methods=['POST'])
 def test():
@@ -485,16 +514,18 @@ def test():
     # response.headers['Content-Encoding'] = 'gzip'
     # return response
     # return jsonify(arr)
-    creatures = generate_population(100)
-    arr = []
-    for i in range(300):
-        temp = []
-        for elem in creatures:
-            temp.append({'x': elem.x, 'y': elem.y, 'g': elem.genomeCol})
+    arr = run_natural_selection(1)
+    # run_natural_selection(1)
 
-        for elem in creatures:
-            elem.think()
-        arr.append(temp)
+    # arr = []
+    # for i in range(300):
+    #     temp = []
+    #     for elem in creatures:
+    #         temp.append({'x': elem.x, 'y': elem.y, 'g': elem.genomeCol})
+    #     for elem in creatures:
+    #         elem.think()
+    #     arr.append(temp)
+    # arr.append([creatures[0].dumps()]*300)
     content = gzip.compress(json.dumps(arr).encode('utf8'), 5)
     response = make_response(content)
     response.headers['Content-length'] = len(content)
