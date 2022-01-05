@@ -8,13 +8,11 @@ from Simulator.PARAMETERS import WORLD_SIZE
 from Simulator.PARAMETERS import BRAIN_SIZE
 from Simulator.PARAMETERS import INTERNAL_NEURONS
 from Simulator.PARAMETERS import POPULATION
-# WORLD_SIZE = 128
-# BRAIN_SIZE = 5
+
 from flask import Flask, jsonify, make_response
 from flask_cors import CORS
 import json
 import gzip
-
 random.seed(19)
 
 
@@ -559,8 +557,6 @@ class Creature(Brain):
 
 
 
-
-
 app = Flask(__name__)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
@@ -579,9 +575,67 @@ def generate_population(sz):
     return arr
 
 
+def load_data():
+    try:
+        with open("data.dat", "rb") as f:
+            creatures,gens = pickle.load(f)
+    except:
+        gens = 0
+        creatures = []
+    return creatures,gens
+
+
+def save_data(data):
+    with open("data.dat", "wb") as f:
+        pickle.dump(data, f)
+
+
+@app.route("/test", methods=['POST'])
+def test():
+    global subsequent, gens
+    arr = []
+    n = 1
+    # if subsequent: n = 1
+    itera = 0
+    surv = 1000
+    while itera < n:
+        if subsequent:
+            surv = run_natural_selection()
+            gens+=1
+        for i in range(300):
+            temp = []
+            if itera == n-1:
+                for elem in creatures:
+                    temp.append({'x': elem.x, 'y': elem.y, 'g': elem.genomeCol})
+
+                arr.append(temp)
+            for elem in creatures:
+                elem.think()
+
+        subsequent = True
+
+        itera+=1
+
+
+    stats = surv
+    content = gzip.compress(json.dumps({"d":arr, "s":[stats, gens]}).encode('utf8'), 5)
+    response = make_response(content)
+    response.headers['Content-length'] = len(content)
+    response.headers['Content-Encoding'] = 'gzip'
+    return response
+
+
+@app.route("/save", methods=['GET'])
+def save():
+    print("Saving")
+    save_data([creatures, gens])
+    return jsonify(0)
+
+
 def mutation(probability):
     # return random.random() < probability
     return random.randint(1,probability) == 1
+
 
 # def run_natural_selection1():
 #     global creatures, ALL_CELLS
@@ -627,67 +681,12 @@ def mutation(probability):
 #
 
 
-
-def load_data():
-    try:
-        with open("data", "rb") as f:
-            creatures,gens = pickle.load(f)
-    except:
-        creatures = []
-    return creatures,gens
-
-def save_data(data):
-    with open("data.dat", "wb") as f:
-        pickle.dump(data, f)
-
-
-@app.route("/test", methods=['POST'])
-def test():
-    global subsequent, gens
-    arr = []
-    n = 1
-    # if subsequent: n = 1
-    itera = 0
-    surv = 1000
-    while itera < n:
-        if subsequent:
-            surv = run_natural_selection()
-            gens+=1
-        for i in range(300):
-            temp = []
-            if itera == n-1:
-                for elem in creatures:
-                    temp.append({'x': elem.x, 'y': elem.y, 'g': elem.genomeCol})
-
-                arr.append(temp)
-            for elem in creatures:
-                elem.think()
-
-        subsequent = True
-
-        itera+=1
-
-
-    stats = surv
-    content = gzip.compress(json.dumps({"d":arr, "s":[stats, gens]}).encode('utf8'), 5)
-    response = make_response(content)
-    response.headers['Content-length'] = len(content)
-    response.headers['Content-Encoding'] = 'gzip'
-    return response
-
-@app.route("/save", methods=['GET'])
-def save():
-    print("Saving")
-    save_data([creatures, gens])
-    return jsonify(0)
-
-
 def reproduce(ele):
     gene = ele.genome[:]
     ele.genome_copied += 1
     mutate = False
     # if 8 < ele.genome_copied == random.randint(1, 1000):
-    if 50 < ele.genome_copied == random.randint(1, 500):
+    if 25 < ele.genome_copied == random.randint(1, 500):
         mutate = True
         print("Mutated because genome was copied", ele.genome_copied, "times")
         ch = random.choice(gene)
@@ -714,6 +713,7 @@ def run_natural_selection():
     creatures = brr
     brr = []
     random.shuffle(creatures)
+
     for ele in creatures:
         cret, mut = reproduce(ele)
         brr.append(cret)
@@ -721,19 +721,21 @@ def run_natural_selection():
         if mut: brr[-1].genome_copied = 0
 
     for ele in creatures:
-        for _ in range(random.randint(0,1)):
+        rg = random.randint(0,1)
+        for _ in range(rg):
             cret, mut = reproduce(ele)
             brr.append(cret)
             brr[-1].genome_copied = ele.genome_copied
             if mut: brr[-1].genome_copied = 0
+
     while len(brr) < POPULATION:
         chc = random.choice(creatures)
         rep, mut = reproduce(chc)
         brr.append(rep)
         if mut: brr[-1].genome_copied = 0
-    random.shuffle(brr)
     if len(brr) > POPULATION:
         brr = brr[:POPULATION]
+    random.shuffle(brr)
     for i,ele in enumerate(brr):
         ele.x = choices[i]['x']
         ele.y = choices[i]['y']
@@ -743,23 +745,21 @@ def run_natural_selection():
 
 
 def condition(ele):
-    val = 25
+    val = 4
     # return (ele.x <= val or ele.x >= 128-val) and (ele.y <= val or ele.y >= 128-val)
     # return (ele.y > 64-val and ele.y < 64+val) and (ele.x > 64-val and ele.x < 64+val)
     # return ( (ele.x < val) or (ele.x > (128 - val))) and ( (ele.y < val) or (ele.y > (128 - val)))
-    return (ele.y < val and ele.x < val) or (ele.y >= 128-val and ele.x >= 128-val)
+    return (ele.y < val) or (ele.y >= 128-val)
 
 
 if __name__ == '__main__':
     gens = 0
     subsequent = False
-    LOAD_DATA = False
-
+    LOAD_DATA = True
     if LOAD_DATA:
         creatures, gens = load_data()
     else:
         creatures = generate_population(POPULATION)
-
 
     app.run()
 
