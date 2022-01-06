@@ -7,16 +7,29 @@
     <link rel="stylesheet" href="src/style.css" />
     <script src="libraries/p5.js"></script>
     <script src="libraries/addons/p5.sound.min.js"></script>
-
+    <!--    Charts API      -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
     <title>Natural Selection</title>
   </head>
   <body>
-    <div class="main">
-      <div id="canv_holder"></div>
-      <div id="butts"></div>
+    <div>
+      <div class="main">
+        <div id="canv_holder"></div>
+        <div id="butts"></div>
+        <h1 id="score">Gen:</h1>
+      </div>
+    </div>
+    <div id="charts">
+      <canvas
+        id="canvas"
+        width="400"
+        height="400"
+        style="display: inline"
+      ></canvas>
     </div>
 
     <script src="src/app.js"></script>
     <script src="src/creature.js"></script>
+    <script src="src/chart_display.js"></script>
   </body>
 </html>

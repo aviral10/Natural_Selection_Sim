@@ -13,8 +13,9 @@ class Creature {
     fill(this.genome);
     noStroke();
     // noStroke();
-    square(xpos, ypos, GLOBAL_SHAPE);
-    // circle(xpos, ypos, GLOBAL_SHAPE);
+    // square(xpos, ypos, GLOBAL_SHAPE);
+    ellipseMode(CORNER);
+    circle(xpos, ypos, GLOBAL_SHAPE);
     // console.log(xpos, ypos);
   }
 }

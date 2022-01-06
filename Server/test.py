@@ -769,3 +769,14 @@
 #
 #
 #
+import random
+
+class tst:
+    def __init__(self, v):
+        self.x = v
+    def __repr__(self):
+        return f"{self.x}"
+mylist = [tst(1), tst(2)]
+x = random.choice(mylist)
+x.x = 50
+print(mylist)
