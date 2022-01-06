@@ -55,7 +55,7 @@ class Neuron:
         return self.func()
 
     def __repr__(self):
-        return f"name: {self.name}"
+        return f"name: {self.name}, VALUE: {self.value}"
 
     def dumps(self):
         return f"name: {self.name}, parents: {self.parents}, pointing: {self.pointingTo}"
@@ -96,6 +96,9 @@ def binSearch(arr, key):
             high = mid - 1
     return ans
 
+def prob2bool(factor):
+    # assert(factor >= 0.0 && factor <= 1.0);
+    return random.random() < factor
 
 class Brain:
     SENS_LIM = len(inNames)
@@ -213,7 +216,7 @@ class Brain:
                     elif neu.ntype == 's':
                         g[0].append(neu)
                     par.append(element[1])
-            curr.parentweights = np.array(par, dtype=np.float)
+            # curr.parentweights = np.array(par, dtype=np.float)
 
         for curr in g[1]:
             par = []
@@ -227,7 +230,7 @@ class Brain:
                         g[0].append(neu)
                     par.append(element[1])
 
-            curr.parentweights = np.array(par, dtype=np.float)
+            # curr.parentweights = np.array(par, dtype=np.float)
 
         eps = Neuron("none", 'a', self.epsFunc)
         g[2].append(eps)
@@ -243,7 +246,7 @@ class Brain:
     #     return
 
 
-    def think(self):
+    def thinks(self):
         for idx in range(3):
             for neu in self.brain_graph[idx]:
                 neu.think()
@@ -251,20 +254,53 @@ class Brain:
         chc = random.choices(self.brain_graph[2], weights=probs, k=1)
         chc[0].execute()
 
-    def thinks(self):
+    def think(self):
         for idx in range(3):
             for neu in self.brain_graph[idx]:
                 neu.think()
-        probs = [max(0, entity.value) for entity in self.brain_graph[2]]
-        sm = sum(probs)
-        if sm == 0:
-            probs[-1] = 1 - sm
-            sm = 1
-        norm = [float(i)/sm for i in probs]
-        ret = np.random.choice(self.brain_graph[2], size=1, replace=False, p=norm)
-        # ret = random.choices(population=self.brain_graph[2], weights=norm, k=1)
-        # print(ret)
-        ret[0].execute()
+
+        if random.randint(0,1) == 1:
+            entities = [entity for entity in self.brain_graph[2] if entity.name[0] != 'm']
+            if len(entities) != 0:
+                probs = [max(0, entity.value) for entity in entities]
+                chc = random.choices(entities, weights=probs, k=1)
+                chc[0].execute()
+                return None
+        #
+        px, py = 0,0
+        for ele in self.brain_graph[2]:
+            if ele.name == 'me':
+                py += ele.value
+            elif ele.name == 'mw':
+                py -= ele.value
+            elif ele.name == 'mn':
+                px -= ele.value
+            elif ele.name == 'ms':
+                px += ele.value
+            elif ele.name == 'mf':
+                px += self.prev[0]*ele.value
+                py += self.prev[1]*ele.value
+            elif ele.name == 'mr':
+                px -= self.prev[0] * ele.value
+                py -= self.prev[1] * ele.value
+            elif ele.name == 'mrd':
+                rx = random.randint(-1,1)
+                ry = random.randint(-1,1)
+                px += rx * ele.value
+                py += ry * ele.value
+
+        px = tanh(px)
+        py = tanh(py)
+        probx = random.random() < abs(px)
+        proby = random.random() < abs(py)
+        sigX = -1 if px < 0 else 1
+        sigY = -1 if py < 0 else 1
+        px = probx*sigX
+        py = proby*sigY
+        self.move(px, py)
+
+
+
 
     def attach_functions(self):
         for i in range(len(inNames)):
@@ -318,10 +354,12 @@ class Brain:
 
     def move(self, dx, dy):
         if self.isValid(dx, dy):
-            if not grid.GRID_CELLS[self.x + dx][self.y + dy].isOccupied:
+            px = self.x + dx
+            py = self.y + dy
+            if not grid.GRID_CELLS[px][py].isOccupied:
                 grid.GRID_CELLS[self.x][self.y].isOccupied = False
-                self.x += dx
-                self.y += dy
+                self.x = px
+                self.y = py
                 grid.GRID_CELLS[self.x][self.y].isOccupied = True
                 self.prev = (dx, dy)
                 return True
@@ -360,6 +398,7 @@ class Brain:
                 #         grid.GRID_CELLS[self.x][self.y].isOccupied = True
                 #         self.prev = (0, dy)
                 #         return True
+                self.prev = (0,0)
                 return False
         self.prev = (0, 0)
         return False
@@ -450,10 +489,69 @@ class Brain:
             length += 2
         return cells_occupied / total_cells_covered
 
+    def density_northeast(self):
+        total_cells_covered = 0
+        cells_occupied = 0
+        for i in range(self.search_radius):
+            cy = self.y + i
+            for j in range(self.search_radius):
+                cx = self.x - j
+                if isValidCell(cx, cy):
+                    if grid.GRID_CELLS[cx][cy].isOccupied:
+                        cells_occupied += 1
+                total_cells_covered += 1
+        return cells_occupied / total_cells_covered
+
+    def density_northwest(self):
+        total_cells_covered = 0
+        cells_occupied = 0
+        for i in range(self.search_radius):
+            cy = self.y - i
+            for j in range(self.search_radius):
+                cx = self.x - j
+                if isValidCell(cx, cy):
+                    if grid.GRID_CELLS[cx][cy].isOccupied:
+                        cells_occupied += 1
+                total_cells_covered += 1
+        return cells_occupied / total_cells_covered
+
+    def density_southeast(self):
+        total_cells_covered = 0
+        cells_occupied = 0
+        for i in range(self.search_radius):
+            cy = self.y + i
+            for j in range(self.search_radius):
+                cx = self.x + j
+                if isValidCell(cx, cy):
+                    if grid.GRID_CELLS[cx][cy].isOccupied:
+                        cells_occupied += 1
+                total_cells_covered += 1
+        return cells_occupied / total_cells_covered
+
+    def density_southwest(self):
+        total_cells_covered = 0
+        cells_occupied = 0
+        for i in range(self.search_radius):
+            cy = self.y - i
+            for j in range(self.search_radius):
+                cx = self.x + j
+                if isValidCell(cx, cy):
+                    if grid.GRID_CELLS[cx][cy].isOccupied:
+                        cells_occupied += 1
+                total_cells_covered += 1
+        return cells_occupied / total_cells_covered
+
     def searchForw(self):
         if self.prev == (0,0):
-            rfunc = random.choice([self.density_north, self.density_east, self.density_south, self.density_west])
-            return rfunc()
+            rfid = random.randint(1,4)
+            if rfid == 1:
+                return self.density_east()
+            elif rfid == 2:
+                return self.density_south()
+            elif rfid == 3:
+                return self.density_west()
+            else:
+                return self.density_north()
         if self.prev == (0,1):
             return self.density_east()
         if self.prev == (1,0):
@@ -462,6 +560,14 @@ class Brain:
             return self.density_west()
         if self.prev == (-1,0):
             return self.density_north()
+        if self.prev == (1,1):
+            return self.density_southeast()
+        if self.prev == (1,-1):
+            return self.density_southwest()
+        if self.prev == (-1,1):
+            return self.density_northeast()
+        if self.prev == (-1,-1):
+            return self.density_northwest()
 
     def searchAll(self):
         arr = [self.density_north(), self.density_east(), self.density_south(), self.density_west()]

@@ -82,25 +82,6 @@ def save():
     return jsonify(0)
 
 
-# def reproduce(ele):
-#     gene = ele.genome[:]
-#     ele.genome_copied += 1
-#     mutate = False
-#     # if 8 < ele.genome_copied == random.randint(1, 1000):
-#     if mutation(ele):
-#         mutate = True
-#         print("Mutated because genome was copied", ele.genome_copied, "times")
-#         base = random.randint(0,1)
-#         prob = base*16 + random.randint(0,32)%16
-#         idx = random.randint(0, len(gene)-1)
-#         ch = gene[idx]
-#         print("Old Gene: ", ch, f"{ch:032b}")
-#         ch ^= (1 << (prob))
-#         print("New Gene: ", ch, f"{ch:032b}")
-#         gene[idx] = ch
-#         # print(ele.genome == gene)
-#     return Creature(ele.x, ele.y, gene), mutate
-
 def reproduce(ele, mutate_this=True):
     gene = ele.genome[:]
     # ele.genome_copied += 1
@@ -130,7 +111,7 @@ def run_natural_selection():
     random.shuffle(creatures)
     mutated_genes = 0
     for ele in creatures:
-        cret, mut = reproduce(ele, False)
+        cret, mut = reproduce(ele)
         brr.append(cret)
 
     for ele in creatures:
@@ -194,11 +175,12 @@ def mutationCond(prob):
 
 
 def condition(ele):
-    val = 20
-    # return (ele.y > 64-val and ele.y < 64+val) and (ele.x > 64-val and ele.x < 64+val)
+    val = 16
+    return ele.y < 10
+    # return (64 - val < ele.y < 64 + val) and (64 - val < ele.x < 64 + val)
     # return ( (ele.x < val) or (ele.x >= (128 - val))) and ( (ele.y < val) or (ele.y >= (128 - val)))
     # return ele.y < val and ele.x < val
-    return ele.y < 30 and ( 40 <= ele.x <= 80 )
+    # return ele.y < 30 and ( 40 <= ele.x <= 80 )
 
 
 if __name__ == '__main__':

@@ -74,7 +74,7 @@ async function makeRequest() {
 }
 
 let secs = 5;
-let delay = 3000;
+let delay = 2000;
 async function makeReqContinuous() {
   if (interval == false) return;
   await makeRequest();
@@ -105,7 +105,7 @@ function changeText(n) {
     " Survivors: " +
     survivors +
     " Rate: " +
-    survivors / 10 +
+    ((survivors / creatures[0].length) * 100).toPrecision(3) +
     "%";
 }
 
