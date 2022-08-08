@@ -176,7 +176,7 @@ def mutationCond(prob):
 
 def condition(ele):
     val = 16
-    return ele.y < 10
+    return ele.x > 128-val
     # return (64 - val < ele.y < 64 + val) and (64 - val < ele.x < 64 + val)
     # return ( (ele.x < val) or (ele.x >= (128 - val))) and ( (ele.y < val) or (ele.y >= (128 - val)))
     # return ele.y < val and ele.x < val
@@ -186,7 +186,7 @@ def condition(ele):
 if __name__ == '__main__':
     gens = 0
     subsequent = False
-    LOAD_DATA = False
+    LOAD_DATA = True
     if LOAD_DATA:
         creatures, gens = load_data()
     else:

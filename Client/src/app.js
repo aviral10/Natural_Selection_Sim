@@ -73,8 +73,8 @@ async function makeRequest() {
   total_generations++;
 }
 
-let secs = 5;
-let delay = 2000;
+let secs = 25; // 5
+let delay = 10000; // 2000
 async function makeReqContinuous() {
   if (interval == false) return;
   await makeRequest();
